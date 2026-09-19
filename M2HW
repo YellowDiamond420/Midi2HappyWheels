@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Midi2HappyWheels</title>
+
+<style>
+body {
+    margin: 0;
+    background: #202020;
+    color: #ddd;
+    font-family: Arial, sans-serif;
+}
+
+.main {
+    width: 95%;
+    max-width: 1100px;
+    margin: 15px auto;
+}
+
+h1 {
+    font-size: 28px;
+    margin: 0;
+}
+
+h2 {
+    font-size: 20px;
+    margin: 5px 0 12px;
+}
+
+p {
+    margin: 5px 0;
+}
+
+a {
+    color: #55aaff;
+}
+
+.box {
+    background: #292929;
+    border: 1px solid #444;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+input,
+select,
+button,
+textarea {
+    font-family: Arial, sans-serif;
+}
+
+input[type="number"],
+select {
+    width: 100%;
+    max-width: 250px;
+    padding: 5px;
+    background: #111;
+    color: white;
+    border: 1px solid #555;
+}
+
+input[type="file"] {
+    margin-top: 5px;
+}
+
+.row {
+    margin-bottom: 10px;
+}
+
+button {
+    background: #555;
+    color: white;
+    border: 1px solid #777;
+    padding: 7px 12px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #666;
+}
+
+textarea {
+    width: 100%;
+    height: 500px;
+    resize: vertical;
+    background: #111;
+    color: #ddd;
+    border: 1px solid #555;
+    padding: 8px;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.stats {
+    margin-top: 10px;
+    background: #151515;
+    border: 1px solid #333;
+    padding: 8px;
+    font-family: monospace;
+}
+
+.stat {
+    display: inline-block;
+    margin-right: 25px;
+}
+
+.check {
+    margin: 8px 0;
+}
+
+.footer {
+    margin-top: 15px;
+    font-size: 12px;
+    color: #777;
+}
+</style>
+</head>
+
+<body>
+
+<div class="main">
+
+<h1>Midi2HappyWheels</h1>
+
+<p>midi to happy wheels xml thing</p>
+
+<p>
+<a href="https://totaljerkface.com/happy_wheels.tjf"
+target="_blank">
+open happy wheels
+</a>
+</p>
+
+
+<div class="box">
+
+<h2>MIDI</h2>
+
+<input
+    id="midiFile"
+    type="file"
+    accept=".mid,.midi"
+>
+
+<p id="status">no file selected</p>
+
+<div class="stats">
+
+    <div class="stat">
+        notes: <span id="noteCount">0</span>
+    </div>
+
+    <div class="stat">
+        tracks: <span id="trackCount">0</span>
+    </div>
+
+    <div class="stat">
+        tempo: <span id="tempoCount">0</span>
+    </div>
+
+    <div class="stat">
+        length: <span id="lengthStat">0s</span>
+    </div>
+
+</div>
+
+</div>
+
+
+<div class="box">
+
+<h2>settings</h2>
+
+<div class="row">
+    <input id="xScale" type="number" value="100" step="1">
+</div>
+
+<div class="row">
+    <input id="yScale" type="number" value="8" step="0.1">
+</div>
+
+<div class="row">
+    <input id="startX" type="number" value="300">
+</div>
+
+<div class="row">
+    <input id="startY" type="number" value="4000">
+</div>
+
+<div class="row">
+    <input id="noteWidth" type="number" value="40">
+</div>
+
+<div class="row">
+    <input id="noteHeight" type="number" value="20">
+</div>
+
+<div class="row">
+    <select id="shapeType">
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+    </select>
+</div>
+
+<div class="row">
+    <input id="objectColor" type="number" value="4032711">
+</div>
+
+
+<div class="check">
+    <input id="velocitySize" type="checkbox">
+    velocity size
+</div>
+
+<div class="check">
+    <input id="durationWidth" type="checkbox" checked>
+    duration width
+</div>
+
+<div class="check">
+    <input id="channelLayers" type="checkbox">
+    channel layers
+</div>
+
+<div class="check">
+    <input id="includeDefaults" type="checkbox" checked>
+    default stuff
+</div>
+
+<div class="check">
+    <input id="includeText" type="checkbox" checked>
+    credit text
+</div>
+
+
+<button onclick="convertMidi()">convert</button>
+
+<button onclick="downloadXML()">download xml</button>
+
+</div>
+
+
+<div class="box">
+
+<h2>XML</h2>
+
+<textarea
+    id="output"
+    spellcheck="false"
+></textarea>
+
+</div>
+
+
+<div class="footer">
+Midi2HappyWheels by yellowDiamond420
+</div>
+
+</div>
+
+
+<script>
+
+let generatedXML = "";
+let currentParsed = null;
+
+
+/* MIDI */
+
+function readU16(data, p) {
+    return (
+        (data[p] << 8) |
+        data[p + 1]
+    );
+}
+
+
+function readU32(data, p) {
+    return (
+        ((data[p] << 24) >>> 0) |
+        (data[p + 1] << 16) |
+        (data[p + 2] << 8) |
+        data[p + 3]
+    ) >>> 0;
+}
+
+
+function readString(data, p, length) {
+
+    let result = "";
+
+    for (let i = 0; i < length; i++) {
+        result += String.fromCharCode(
+            data[p + i]
+        );
+    }
+
+    return result;
+}
+
+
+function readVarLen(data, state) {
+
+    let value = 0;
+
+    while (true) {
+
+        const b = data[state.pos++];
+
+        value =
+            (value << 7) |
+            (b & 0x7f);
+
+        if (!(b & 0x80))
+            break;
+    }
+
+    return value;
+}
+
+
+/* MIDI PARSER */
+
+function parseMIDI(buffer) {
+
+    const data = new Uint8Array(buffer);
+
+    let pos = 0;
+
+    if (
+        readString(data, 0, 4) !== "MThd"
+    ) {
+        throw new Error("not a midi file");
+    }
+
+    const headerLength =
+        readU32(data, 4);
+
+    const format =
+        readU16(data, 8);
+
+    const trackCount =
+        readU16(data, 10);
+
+    const division =
+        readU16(data, 12);
+
+    if (division & 0x8000) {
+        throw new Error("SMPTE midi timing not supported");
+    }
+
+    const ticksPerQuarter = division;
+
+    pos = 8 + headerLength;
+
+    const tracks = [];
+    const allNotes = [];
+    const tempoEvents = [];
+
+    for (
+        let trackIndex = 0;
+        trackIndex < trackCount;
+        trackIndex++
+    ) {
+
+        if (
+            readString(data, pos, 4) !== "MTrk"
+        ) {
+            throw new Error("bad midi track");
+        }
+
+        const trackLength =
+            readU32(data, pos + 4);
+
+        pos += 8;
+
+        const trackEnd =
+            pos + trackLength;
+
+        let tick = 0;
+        let runningStatus = null;
+
+        const activeNotes = new Map();
+
+        while (pos < trackEnd) {
+
+            const state = { pos };
+
+            const delta =
+                readVarLen(data, state);
+
+            pos = state.pos;
+
+            tick += delta;
+
+            let status = data[pos];
+
+            if (status < 0x80) {
+
+                if (runningStatus === null) {
+                    throw new Error("bad running status");
+                }
+
+                status = runningStatus;
+
+            } else {
+
+                pos++;
+                runningStatus = status;
+            }
+
+
+            /* META */
+
+            if (status === 0xff) {
+
+                const metaType = data[pos++];
+
+                const state2 = { pos };
+
+                const length =
+                    readVarLen(data, state2);
+
+                pos = state2.pos;
+
+                if (
+                    metaType === 0x51 &&
+                    length === 3
+                ) {
+
+                    const microseconds =
+                        (data[pos] << 16) |
+                        (data[pos + 1] << 8) |
+                        data[pos + 2];
+
+                    tempoEvents.push({
+                        tick,
+                        microseconds
+                    });
+                }
+
+                pos += length;
+
+                continue;
+            }
+
+
+            /* SYSEX */
+
+            if (
+                status === 0xf0 ||
+                status === 0xf7
+            ) {
+
+                const state2 = { pos };
+
+                const length =
+                    readVarLen(data, state2);
+
+                pos =
+                    state2.pos + length;
+
+                continue;
+            }
+
+
+            const command =
+                status & 0xf0;
+
+            const channel =
+                status & 0x0f;
+
+
+            /* 2 BYTE */
+
+            if (
+                command === 0x80 ||
+                command === 0x90 ||
+                command === 0xa0 ||
+                command === 0xb0 ||
+                command === 0xe0
+            ) {
+
+                const note =
+                    data[pos++];
+
+                const velocity =
+                    data[pos++];
+
+
+                if (
+                    command === 0x90 &&
+                    velocity > 0
+                ) {
+
+                    const key =
+                        channel + ":" + note;
+
+                    activeNotes.set(
+                        key,
+                        {
+                            note,
+                            velocity,
+                            startTick: tick,
+                            channel
+                        }
+                    );
+                }
+
+                else if (
+                    command === 0x80 ||
+                    (
+                        command === 0x90 &&
+                        velocity === 0
+                    )
+                ) {
+
+                    const key =
+                        channel + ":" + note;
+
+                    const active =
+                        activeNotes.get(key);
+
+                    if (active) {
+
+                        allNotes.push({
+
+                            note: active.note,
+                            velocity: active.velocity,
+                            startTick: active.startTick,
+                            endTick: tick,
+                            channel: active.channel
+
+                        });
+
+                        activeNotes.delete(key);
+                    }
+                }
+            }
+
+
+            /* 1 BYTE */
+
+            else if (
+                command === 0xc0 ||
+                command === 0xd0
+            ) {
+
+                pos++;
+            }
+        }
+
+        tracks.push({
+            index: trackIndex
+        });
+
+        pos = trackEnd;
+    }
+
+
+    if (
+        !tempoEvents.some(
+            e => e.tick === 0
+        )
+    ) {
+
+        tempoEvents.push({
+            tick: 0,
+            microseconds: 500000
+        });
+    }
+
+
+    tempoEvents.sort(
+        (a, b) =>
+            a.tick - b.tick
+    );
+
+
+    const tempoMap = [];
+
+    for (const event of tempoEvents) {
+
+        if (
+            tempoMap.length &&
+            tempoMap[
+                tempoMap.length - 1
+            ].tick === event.tick
+        ) {
+
+            tempoMap[
+                tempoMap.length - 1
+            ] = event;
+
+        } else {
+
+            tempoMap.push(event);
+        }
+    }
+
+
+    function tickToSeconds(targetTick) {
+
+        let seconds = 0;
+        let previousTick = 0;
+        let previousTempo = 500000;
+
+        for (const tempo of tempoMap) {
+
+            if (
+                tempo.tick >
+                targetTick
+            ) {
+                break;
+            }
+
+            const deltaTicks =
+                tempo.tick -
+                previousTick;
+
+            seconds +=
+                deltaTicks *
+                previousTempo /
+                1000000 /
+                ticksPerQuarter;
+
+            previousTick =
+                tempo.tick;
+
+            previousTempo =
+                tempo.microseconds;
+        }
+
+        const remainingTicks =
+            targetTick -
+            previousTick;
+
+        seconds +=
+            remainingTicks *
+            previousTempo /
+            1000000 /
+            ticksPerQuarter;
+
+        return seconds;
+    }
+
+
+    for (const note of allNotes) {
+
+        note.start =
+            tickToSeconds(
+                note.startTick
+            );
+
+        note.end =
+            tickToSeconds(
+                note.endTick
+            );
+
+        note.duration =
+            Math.max(
+                0,
+                note.end -
+                note.start
+            );
+    }
+
+
+    allNotes.sort(
+        (a, b) =>
+            a.start - b.start
+    );
+
+
+    return {
+        format,
+        tracks,
+        notes: allNotes,
+        tempoMap,
+        ticksPerQuarter
+    };
+}
+
+
+/* DEFAULT HAPPY WHEELS CONTENT */
+
+function addDefaults(xml) {
+
+    xml.push(
+        `<sh t="0" p0="356" p1="5227" p2="300" p3="100" p4="0" p5="t" p6="f" p7="1" p8="4032711" p9="-1" p10="100" p11="1"/>`
+    );
+
+    xml.push(
+        `<sh t="1" p0="299" p1="5385" p2="200" p3="200" p4="0" p5="t" p6="f" p7="1" p8="4032711" p9="-1" p10="100" p11="1" p12="0"/>`
+    );
+
+    xml.push(
+        `<sh t="2" p0="527" p1="5394" p2="200" p3="200" p4="0" p5="t" p6="f" p7="1" p8="4032711" p9="-1" p10="100" p11="1" p12="0"/>`
+    );
+
+    xml.push(
+        `<sh t="3" p0="56.50" p1="5400.50" p2="75" p3="97" p4="0" p5="t" p6="f" p7="1" p8="4032711" p9="-1" p10="100" p11="1">`
+    );
+
+    xml.push(
+        `<v f="t" id="0" n="6" v0="-11.5_-15.5" v1="37.5_-48.5" v2="19.5_17.5" v3="-11.5_48.5" v4="-37.5_17.5" v5="-22.5_-6.5"/>`
+    );
+
+    xml.push(
+        `</sh>`
+    );
+
+    xml.push(
+        `<sh t="4" i="f" p0="128.50" p1="5247.50" p2="77" p3="121" p4="0" p5="f" p6="f" p7="1" p8="4032711" p9="-1" p10="100" p11="1">`
+    );
+
+    xml.push(
+        `<v f="t" id="0" n="12" v0="-13.5_-23.5" v1="-38.5_25.5" v2="-9.5_60.5" v3="21.5_53.5" v4="29.5_23.5" v5="38.5_-3.5" v6="26.5_-9.5" v7="4.5_7.5" v8="-8.5_27.5" v9="-11.5_-11.5" v10="25.5_-39.5" v11="6.5_-60.5"/>`
+    );
+
+    xml.push(
+        `</sh>`
+    );
+
+
+    xml.push(
+        `<sp t="3" p0="596" p1="5145" p2="400" p3="32" p4="0" p5="f" p6="f"/>`
+    );
+
+    xml.push(
+        `<sp t="4" p0="675" p1="5373" p2="36" p3="400" p4="0" p5="f" p6="f"/>`
+    );
+
+    xml.push(
+        `<sp t="27" p0="505" p1="5100" p2="250" p3="18" p4="0"/>`
+    );
+
+    xml.push(
+        `<sp t="29" p0="428" p1="5380" p2="0" p3="t" p4="5" p5="f"/>`
+    );
+
+    xml.push(
+        `<sp t="15" p0="618" p1="5323" p2="0" p3="t" p4="f" p5="0" p6="f" p7="f"/>`
+    );
+
+    xml.push(
+        `<sp t="25" p0="395" p1="5301" p2="1" p3="0"/>`
+    );
+
+    xml.push(
+        `<sp t="2" p0="483" p1="5298" p2="0"/>`
+    );
+
+    xml.push(
+        `<sp t="6" p0="168" p1="5509" p2="0" p3="t" p4="20" p5="f"/>`
+    );
+
+    xml.push(
+        `<sp t="7" p0="456" p1="5542" p2="350"/>`
+    );
+
+    xml.push(
+        `<sp t="33" p0="139" p1="5379" p2="0" p3="0" p4="0" p5="1" p6="1" p7="1" p8="5"/>`
+    );
+
+    xml.push(
+        `<sp t="8" p0="1056" p1="5531" p2="0"/>`
+    );
+
+    xml.push(
+        `<sp t="28" p0="1265" p1="5459" p2="0" p3="f" p4="1" p5="0" p6="0" p7="f"/>`
+    );
+
+    xml.push(
+        `<sp t="5" p0="1421" p1="5533" p2="0" p3="0"/>`
+    );
+
+    xml.push(
+        `<sp t="35" p0="1426" p1="5412" p2="0" p3="0" p4="f" p5="90" p6="10"/>`
+    );
+
+    xml.push(
+        `<sp t="17" p0="1311" p1="5277" p2="0" p3="1" p4="f" p5="f" p6="f" p7="t" p8="0" p9="0" p10="0" p11="0" p12="0" p13="0" p14="0" p15="0" p16="0" p17="f"/>`
+    );
+
+    xml.push(
+        `<sp t="13" p0="1331" p1="5557" p2="1" p3="3"/>`
+    );
+
+    xml.push(
+        `<sp t="14" p0="1647" p1="5472" p2="1" p3="3"/>`
+    );
+
+    xml.push(
+        `<sp t="34" p0="1734" p1="5336" p2="0" p3="f" p4="f" p5="t" p6="1"/>`
+    );
+
+    xml.push(
+        `<sp t="32" p0="1846" p1="5397" p2="0" p3="f" p4="t" p5="1"/>`
+    );
+
+    xml.push(
+        `<sp t="30" p0="1790" p1="5212" p2="0" p3="f" p4="t" p5="20" p6="1" p7="0"/>`
+    );
+
+    xml.push(
+        `<sp t="18" p0="1692" p1="5298" p2="10" p3="100" p4="0" p5="f" p6="10" p7="t"/>`
+    );
+
+    xml.push(
+        `<sp t="11" p0="2069" p1="5164" p2="400" p3="400" p4="f" p5="f"/>`
+    );
+
+    xml.push(
+        `<sp t="1" p0="1576" p1="5261" p2="0" p3="f" p4="t"/>`
+    );
+
+    xml.push(
+        `<sp t="19" p0="1444" p1="5295" p2="0" p3="f" p4="f" p5="t"/>`
+    );
+
+    xml.push(
+        `<sp t="20" p0="1582" p1="5199" p2="0" p3="1" p4="f" p5="t"/>`
+    );
+
+    xml.push(
+        `<sp t="21" p0="1516" p1="5199" p2="0" p3="f" p4="t"/>`
+    );
+
+    xml.push(
+        `<sp t="22" p0="1654" p1="5173" p2="0" p3="f" p4="t"/>`
+    );
+
+    xml.push(
+        `<sp t="10" p0="1658" p1="5358"/>`
+    );
+
+    xml.push(
+        `<sp t="0" p0="1780" p1="5131" p2="0" p3="f" p4="t"/>`
+    );
+
+    xml.push(
+        `<sp t="23" p0="1880" p1="5316" p2="0" p3="1" p4="t"/>`
+    );
+
+    xml.push(
+        `<sp t="26" p0="1697" p1="5426" p2="0" p3="f" p4="t" p5="t"/>`
+    );
+
+    xml.push(
+        `<sp t="24" p0="1568" p1="5337" p2="0" p3="f" p4="f" p5="t"/>`
+    );
+
+    xml.push(
+        `<sp t="31" p0="1446" p1="5468" p2="1"/>`
+    );
+
+    xml.push(
+        `<sp t="9" p0="1467" p1="5124"/>`
+    );
+}
+
+
+/* NOTE OBJECT */
+
+function makeNoteShape(note, settings) {
+
+    let x =
+        settings.startX +
+        note.start *
+        settings.xScale;
+
+    let y =
+        settings.startY -
+        (note.note - 60) *
+        settings.yScale;
+
+    if (settings.channelLayers) {
+        y -= note.channel * 150;
+    }
+
+    let width =
+        settings.noteWidth;
+
+    let height =
+        settings.noteHeight;
+
+    if (settings.durationWidth) {
+
+        width +=
+            note.duration *
+            settings.xScale;
+    }
+
+    if (settings.velocitySize) {
+
+        const multiplier =
+            0.5 +
+            note.velocity / 127;
+
+        width *= multiplier;
+        height *= multiplier;
+    }
+
+    width = Math.max(5, width);
+    height = Math.max(5, height);
+
+    return (
+        `        <sh ` +
+        `t="${settings.shapeType}" ` +
+        `p0="${x.toFixed(2)}" ` +
+        `p1="${y.toFixed(2)}" ` +
+        `p2="${width.toFixed(2)}" ` +
+        `p3="${height.toFixed(2)}" ` +
+        `p4="0" ` +
+        `p5="t" ` +
+        `p6="f" ` +
+        `p7="1" ` +
+        `p8="${settings.objectColor}" ` +
+        `p9="-1" ` +
+        `p10="100" ` +
+        `p11="1"/>`
+    );
+}
+
+
+/* XML */
+
+function generateXML(parsed, settings, filename) {
+
+    const notes = parsed.notes;
+
+    let maxX = settings.startX;
+    let maxY = settings.startY;
+
+    for (const note of notes) {
+
+        const x =
+            settings.startX +
+            note.start *
+            settings.xScale;
+
+        let y =
+            settings.startY -
+            (note.note - 60) *
+            settings.yScale;
+
+        if (settings.channelLayers) {
+            y -= note.channel * 150;
+        }
+
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+    }
+
+
+    const levelWidth =
+        Math.max(
+            3000,
+            Math.ceil(maxX + 1000)
+        );
+
+    const levelHeight =
+        Math.max(
+            5100,
+            Math.ceil(maxY + 1000)
+        );
+
+
+    const xml = [];
+
+    xml.push("<levelXML>");
+
+    xml.push(
+        `    <info v="1.99" rv="1.98.4" x="${levelWidth}" y="${levelHeight}" c="1" f="f" h="f" bg="0" bgc="16777215" e="1"/>`
+    );
+
+    xml.push("    <shapes>");
+
+
+    if (settings.includeDefaults) {
+        addDefaults(xml);
+    }
+
+
+    for (const note of notes) {
+
+        xml.push(
+            makeNoteShape(
+                note,
+                settings
+            )
+        );
+    }
+
+
+    xml.push("    </shapes>");
+
+    xml.push("    <specials>");
+
+
+    if (settings.includeText) {
+
+        const credit =
+            filename +
+            " converted to happy wheels using Midi2HappyWheels made by yellowDiamond420";
+
+        xml.push(
+            `        <sp t="16" p0="1371" p1="5347" p2="0" p3="0" p4="2" p5="15" p6="1" p8="100">`
+        );
+
+        xml.push(
+            `            <p7><![CDATA[${credit.replace(
+                /]]>/g,
+                "]]&gt;"
+            )}]]></p7>`
+        );
+
+        xml.push(
+            `        </sp>`
+        );
+    }
+
+
+    xml.push("    </specials>");
+
+    xml.push("    <triggers>");
+
+
+    if (settings.includeDefaults) {
+
+        xml.push(
+            `        <t x="1968" y="5417" w="100" h="100" a="0" b="1" t="1" r="1" sd="f" d="0"/>`
+        );
+    }
+
+
+    xml.push("    </triggers>");
+
+    xml.push("</levelXML>");
+
+    return xml.join("\n");
+}
+
+
+/* CONVERT */
+
+async function convertMidi() {
+
+    const input =
+        document.getElementById("midiFile");
+
+    const status =
+        document.getElementById("status");
+
+
+    if (!input.files.length) {
+
+        status.textContent =
+            "pick a midi first";
+
+        return;
+    }
+
+
+    try {
+
+        status.textContent =
+            "doing midi stuff...";
+
+
+        const file =
+            input.files[0];
+
+        const buffer =
+            await file.arrayBuffer();
+
+        const parsed =
+            parseMIDI(buffer);
+
+        currentParsed =
+            parsed;
+
+
+        const settings = {
+
+            xScale:
+                Number(
+                    document.getElementById(
+                        "xScale"
+                    ).value
+                ),
+
+            yScale:
+                Number(
+                    document.getElementById(
+                        "yScale"
+                    ).value
+                ),
+
+            startX:
+                Number(
+                    document.getElementById(
+                        "startX"
+                    ).value
+                ),
+
+            startY:
+                Number(
+                    document.getElementById(
+                        "startY"
+                    ).value
+                ),
+
+            noteWidth:
+                Number(
+                    document.getElementById(
+                        "noteWidth"
+                    ).value
+                ),
+
+            noteHeight:
+                Number(
+                    document.getElementById(
+                        "noteHeight"
+                    ).value
+                ),
+
+            shapeType:
+                Number(
+                    document.getElementById(
+                        "shapeType"
+                    ).value
+                ),
+
+            objectColor:
+                Number(
+                    document.getElementById(
+                        "objectColor"
+                    ).value
+                ),
+
+            velocitySize:
+                document.getElementById(
+                    "velocitySize"
+                ).checked,
+
+            durationWidth:
+                document.getElementById(
+                    "durationWidth"
+                ).checked,
+
+            channelLayers:
+                document.getElementById(
+                    "channelLayers"
+                ).checked,
+
+            includeDefaults:
+                document.getElementById(
+                    "includeDefaults"
+                ).checked,
+
+            includeText:
+                document.getElementById(
+                    "includeText"
+                ).checked
+        };
+
+
+        generatedXML =
+            generateXML(
+                parsed,
+                settings,
+                file.name
+            );
+
+
+        document.getElementById(
+            "output"
+        ).value =
+            generatedXML;
+
+
+        document.getElementById(
+            "noteCount"
+        ).textContent =
+            parsed.notes.length;
+
+
+        document.getElementById(
+            "trackCount"
+        ).textContent =
+            parsed.tracks.length;
+
+
+        document.getElementById(
+            "tempoCount"
+        ).textContent =
+            parsed.tempoMap.length;
+
+
+        let length = 0;
+
+        for (const note of parsed.notes) {
+
+            length =
+                Math.max(
+                    length,
+                    note.end
+                );
+        }
+
+
+        document.getElementById(
+            "lengthStat"
+        ).textContent =
+            length.toFixed(2) + "s";
+
+
+        status.textContent =
+            "converted " +
+            file.name +
+            " (" +
+            parsed.notes.length +
+            " notes)";
+
+    } catch (error) {
+
+        console.error(error);
+
+        status.textContent =
+            "error: " +
+            error.message;
+    }
+}
+
+
+/* DOWNLOAD */
+
+function downloadXML() {
+
+    if (!generatedXML) {
+
+        alert("convert something first");
+
+        return;
+    }
+
+
+    const blob =
+        new Blob(
+            [generatedXML],
+            {
+                type: "application/xml"
+            }
+        );
+
+
+    const url =
+        URL.createObjectURL(blob);
+
+
+    const a =
+        document.createElement("a");
+
+
+    a.href = url;
+
+    a.download =
+        "Midi2HappyWheels.xml";
+
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    a.remove();
+
+    URL.revokeObjectURL(url);
+}
+
+
+/* FILE SELECTED */
+
+document
+    .getElementById("midiFile")
+    .addEventListener(
+        "change",
+        function() {
+
+            if (!this.files.length)
+                return;
+
+            document.getElementById(
+                "status"
+            ).textContent =
+                this.files[0].name +
+                " selected";
+        }
+    );
+
+</script>
+
+</body>
+</html>
